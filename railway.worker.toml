@@ -1,0 +1,9 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "go build -o worker cmd/worker/main.go"
+
+[deploy]
+startCommand = "./worker"
+
+[build.nixpacks]
+buildCommand = "go build -o worker cmd/worker/main.go"

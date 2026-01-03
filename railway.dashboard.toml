@@ -1,0 +1,6 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "go build -o dashboard cmd/dashboard/main.go"
+
+[deploy]
+startCommand = "./dashboard"
