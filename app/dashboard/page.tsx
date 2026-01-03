@@ -38,7 +38,28 @@ export default function TaskDashboard() {
     setIsSubmitting(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-      await fetch(`${apiUrl}/submit`, { method: 'POST' });
+      console.log('Submitting task to:', `${apiUrl}/submit`);
+      
+      const response = await fetch(`${apiUrl}/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Prevent browser from following redirects or caching
+        cache: 'no-cache',
+        redirect: 'follow',
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to submit task:', response.status, response.statusText);
+        alert(`Failed to submit task: ${response.status} ${response.statusText}`);
+      } else {
+        const data = await response.json();
+        console.log('Task submitted successfully:', data);
+      }
+    } catch (error) {
+      console.error('Error submitting task:', error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Failed to submit task'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -74,6 +95,7 @@ export default function TaskDashboard() {
           </div>
 
           <button 
+            type="button"
             onClick={handleSubmitTask}
             disabled={isSubmitting || !connected}
             className="group px-10 py-5 bg-white text-black rounded-[24px] font-black text-lg hover:bg-slate-200 active:scale-[0.98] transition-all disabled:opacity-20 flex items-center gap-4 shadow-xl shadow-white/5"
