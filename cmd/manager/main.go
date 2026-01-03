@@ -16,12 +16,17 @@ import (
 )
 
 func main() {
+	log.Printf("[MANAGER] Starting Manager service...")
+	
 	// 1. Setup Redis Connection
 	redisURL := os.Getenv("REDIS_URL")
 	// Remove quotes if present (Railway sometimes adds them)
 	redisURL = strings.Trim(redisURL, `"'`)
+	log.Printf("[MANAGER] Redis URL configured: %s", maskRedisURL(redisURL))
+	
 	var rdb *redis.Client
 	if redisURL == "" {
+		log.Printf("[MANAGER] No REDIS_URL found, using localhost fallback")
 		// Fallback for local dev
 		rdb = redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	} else {
@@ -34,9 +39,11 @@ func main() {
 	}
 
 	// Test Redis connection on startup
+	log.Printf("[MANAGER] Testing Redis connection...")
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
 		log.Fatalf("Fatal: Could not connect to Redis: %v", err)
 	}
+	log.Printf("[MANAGER] Redis connection successful")
 
 	// 2. Initialize the Queue
 	taskQueue := queue.NewRedisQueue(rdb, "task_stream")
@@ -148,4 +155,15 @@ func broadcastStatus(ctx context.Context, rdb *redis.Client, taskID, status, wor
 		taskID, status, time.Now().Format("15:04:05"), worker, message)
 
 	rdb.Publish(ctx, "task_updates", update)
+}
+
+// maskRedisURL masks sensitive parts of Redis URL for logging
+func maskRedisURL(url string) string {
+	if url == "" {
+		return "(empty)"
+	}
+	if len(url) > 20 {
+		return url[:10] + "..." + url[len(url)-10:]
+	}
+	return url
 }
