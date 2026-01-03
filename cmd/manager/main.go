@@ -18,6 +18,11 @@ import (
 func main() {
 	// Force immediate log output (flush stdout)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	
+	// Immediate test to verify binary is running
+	fmt.Fprintf(os.Stderr, "[MANAGER] Binary started successfully\n")
+	fmt.Fprintf(os.Stdout, "[MANAGER] Binary started successfully\n")
+	
 	log.Printf("[MANAGER] ========================================")
 	log.Printf("[MANAGER] Starting Manager service...")
 	log.Printf("[MANAGER] ========================================")
@@ -136,7 +141,11 @@ func main() {
 	log.Printf("[MANAGER] Submit endpoint: http://0.0.0.0:%s/submit", port)
 	log.Printf("[MANAGER] ========================================")
 	
-	if err := http.ListenAndServe(":"+port, enableCORS(mux)); err != nil {
+	// Use 0.0.0.0 to bind to all interfaces (required for Railway)
+	addr := "0.0.0.0:" + port
+	log.Printf("[MANAGER] Binding to: %s", addr)
+	
+	if err := http.ListenAndServe(addr, enableCORS(mux)); err != nil {
 		log.Fatalf("[MANAGER] FATAL: HTTP server failed: %v", err)
 	}
 }
