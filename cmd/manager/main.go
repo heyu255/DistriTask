@@ -123,6 +123,8 @@ func enableCORS(next http.Handler) http.Handler {
 			allowedOrigin = "http://localhost:3000" // fallback for local dev
 		}
 		
+		log.Printf("[MANAGER] CORS: Allowing origin: %s, Request from: %s", allowedOrigin, r.Header.Get("Origin"))
+		
 		// Set CORS headers
 		w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
@@ -131,6 +133,7 @@ func enableCORS(next http.Handler) http.Handler {
 
 		// Handle browser pre-flight request
 		if r.Method == "OPTIONS" {
+			log.Printf("[MANAGER] CORS: Handling OPTIONS preflight request")
 			w.WriteHeader(http.StatusOK)
 			return
 		}
