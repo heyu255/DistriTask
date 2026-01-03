@@ -16,7 +16,19 @@ import (
 )
 
 func main() {
+	// Force immediate log output (flush stdout)
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	log.Printf("[MANAGER] ========================================")
 	log.Printf("[MANAGER] Starting Manager service...")
+	log.Printf("[MANAGER] ========================================")
+	
+	// Log environment info
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	log.Printf("[MANAGER] PORT environment variable: %s", port)
+	log.Printf("[MANAGER] ALLOWED_ORIGIN: %s", os.Getenv("ALLOWED_ORIGIN"))
 	
 	// 1. Setup Redis Connection
 	redisURL := os.Getenv("REDIS_URL")
@@ -26,24 +38,29 @@ func main() {
 	
 	var rdb *redis.Client
 	if redisURL == "" {
-		log.Printf("[MANAGER] No REDIS_URL found, using localhost fallback")
+		log.Printf("[MANAGER] WARNING: No REDIS_URL found, using localhost fallback")
 		// Fallback for local dev
 		rdb = redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	} else {
 		// Parse full Redis URL (handles rediss://, redis://, etc.)
+		log.Printf("[MANAGER] Parsing Redis URL...")
 		opt, err := redis.ParseURL(redisURL)
 		if err != nil {
-			log.Fatalf("Failed to parse REDIS_URL: %v", err)
+			log.Fatalf("[MANAGER] FATAL: Failed to parse REDIS_URL: %v", err)
 		}
 		rdb = redis.NewClient(opt)
+		log.Printf("[MANAGER] Redis client created successfully")
 	}
 
 	// Test Redis connection on startup
 	log.Printf("[MANAGER] Testing Redis connection...")
-	if err := rdb.Ping(context.Background()).Err(); err != nil {
-		log.Fatalf("Fatal: Could not connect to Redis: %v", err)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	
+	if err := rdb.Ping(ctx).Err(); err != nil {
+		log.Fatalf("[MANAGER] FATAL: Could not connect to Redis: %v", err)
 	}
-	log.Printf("[MANAGER] Redis connection successful")
+	log.Printf("[MANAGER] ✓ Redis connection successful")
 
 	// 2. Initialize the Queue
 	taskQueue := queue.NewRedisQueue(rdb, "task_stream")
@@ -113,12 +130,15 @@ func main() {
 	})
 
 	// 5. Wrap the mux with the CORS middleware and start the server
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080" // fallback for local dev
+	log.Printf("[MANAGER] ========================================")
+	log.Printf("[MANAGER] Starting HTTP server on port :%s", port)
+	log.Printf("[MANAGER] Health check: http://0.0.0.0:%s/", port)
+	log.Printf("[MANAGER] Submit endpoint: http://0.0.0.0:%s/submit", port)
+	log.Printf("[MANAGER] ========================================")
+	
+	if err := http.ListenAndServe(":"+port, enableCORS(mux)); err != nil {
+		log.Fatalf("[MANAGER] FATAL: HTTP server failed: %v", err)
 	}
-	log.Printf("Manager starting on :%s...", port)
-	log.Fatal(http.ListenAndServe(":"+port, enableCORS(mux)))
 }
 
 // enableCORS middleware handles the pre-flight OPTIONS request and sets headers
