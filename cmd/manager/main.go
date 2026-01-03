@@ -44,9 +44,24 @@ func main() {
 	// 3. Create a new ServeMux to handle routes
 	mux := http.NewServeMux()
 
-	// 4. Define the /submit handler
+	// Health check endpoint
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "OK")
+	})
+
+	// 4. Define the /submit handler with panic recovery
 	mux.HandleFunc("/submit", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("[MANAGER] Received request: %s %s", r.Method, r.URL.Path)
+		// Recover from any panics
+		defer func() {
+			if err := recover(); err != nil {
+				log.Printf("[MANAGER] Panic recovered: %v", err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+			}
+		}()
+
+		log.Printf("[MANAGER] Received request: %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
+		
 		// Only allow POST method
 		if r.Method != "POST" {
 			log.Printf("[MANAGER] Method not allowed: %s (expected POST)", r.Method)
@@ -62,6 +77,8 @@ func main() {
 			CreatedAt: time.Now(),
 		}
 
+		log.Printf("[MANAGER] Created task: %s", t.ID)
+
 		// Push to Redis
 		err := taskQueue.Enqueue(context.Background(), t)
 		if err != nil {
@@ -69,6 +86,8 @@ func main() {
 			http.Error(w, "Internal error", 500)
 			return
 		}
+
+		log.Printf("[MANAGER] Task enqueued successfully: %s", t.ID)
 
 		// Broadcast initial "pending" status so frontend shows it immediately
 		broadcastStatus(context.Background(), rdb, t.ID, "pending", "manager", "Task accepted and waiting in queue")
@@ -79,6 +98,7 @@ func main() {
 		// Respond to Frontend
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"id": "%s", "message": "Task enqueued successfully!"}`, t.ID)
+		log.Printf("[MANAGER] Response sent for task: %s", t.ID)
 	})
 
 	// 5. Wrap the mux with the CORS middleware and start the server
