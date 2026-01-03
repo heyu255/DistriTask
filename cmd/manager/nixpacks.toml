@@ -5,7 +5,7 @@ nixPkgs = ["go"]
 cmds = ["go mod download"]
 
 [phases.build]
-cmds = ["cd /app && go build -o manager cmd/manager/main.go"]
+cmds = ["CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o manager github.com/heyu255/distritask/cmd/manager"]
 
 [start]
 cmd = "./manager"
