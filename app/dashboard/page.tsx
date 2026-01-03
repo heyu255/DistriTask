@@ -34,21 +34,31 @@ export default function TaskDashboard() {
     return () => socket.close();
   }, []);
 
-  const handleSubmitTask = async () => {
+  const handleSubmitTask = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    
     setIsSubmitting(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-      console.log('Submitting task to:', `${apiUrl}/submit`);
+      const url = `${apiUrl}/submit`;
+      console.log('[FRONTEND] Submitting task to:', url);
+      console.log('[FRONTEND] Method: POST');
       
-      const response = await fetch(`${apiUrl}/submit`, {
+      const response = await fetch(url, {
         method: 'POST',
+        mode: 'cors',
+        credentials: 'omit',
         headers: {
           'Content-Type': 'application/json',
         },
-        // Prevent browser from following redirects or caching
-        cache: 'no-cache',
-        redirect: 'follow',
+        body: JSON.stringify({}), // Empty body but ensures POST
+        cache: 'no-store',
+        redirect: 'error', // Don't follow redirects
       });
+      
+      console.log('[FRONTEND] Response status:', response.status);
+      console.log('[FRONTEND] Response method:', response.status === 405 ? 'GET detected (wrong!)' : 'POST (correct)');
       
       if (!response.ok) {
         console.error('Failed to submit task:', response.status, response.statusText);
