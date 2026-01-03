@@ -45,14 +45,18 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Health check endpoint
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "OK")
+		fmt.Fprintf(w, "Manager service is running")
 	})
 
 	// 4. Define the /submit handler with panic recovery
 	mux.HandleFunc("/submit", func(w http.ResponseWriter, r *http.Request) {
-		// Recover from any panics
+		// Recover from any panics to prevent service crash
 		defer func() {
 			if err := recover(); err != nil {
 				log.Printf("[MANAGER] Panic recovered: %v", err)
@@ -83,11 +87,11 @@ func main() {
 		err := taskQueue.Enqueue(context.Background(), t)
 		if err != nil {
 			log.Printf("[MANAGER] Enqueue error: %v", err)
-			http.Error(w, "Internal error", 500)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
 
-		log.Printf("[MANAGER] Task enqueued successfully: %s", t.ID)
+		log.Printf("[MANAGER] Task enqueued to Redis: %s", t.ID)
 
 		// Broadcast initial "pending" status so frontend shows it immediately
 		broadcastStatus(context.Background(), rdb, t.ID, "pending", "manager", "Task accepted and waiting in queue")
