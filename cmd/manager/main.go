@@ -46,6 +46,14 @@ func main() {
 
 	// 4. Define the /submit handler
 	mux.HandleFunc("/submit", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("[MANAGER] Received request: %s %s", r.Method, r.URL.Path)
+		// Only allow POST method
+		if r.Method != "POST" {
+			log.Printf("[MANAGER] Method not allowed: %s (expected POST)", r.Method)
+			http.Error(w, "Method not allowed. Use POST.", http.StatusMethodNotAllowed)
+			return
+		}
+		
 		// Create the task object
 		t := &task.Task{
 			ID:        uuid.New().String(),
