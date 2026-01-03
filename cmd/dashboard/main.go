@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/websocket"
 	"github.com/redis/go-redis/v9"
@@ -14,7 +15,11 @@ var upgrader = websocket.Upgrader{
 }
 
 func main() {
-	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
+	redisAddr := os.Getenv("REDIS_URL")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379" // fallback for local dev
+	}
+	rdb := redis.NewClient(&redis.Options{Addr: redisAddr})
 	ctx := context.Background()
 
 	// Test Redis connection
@@ -44,6 +49,10 @@ func main() {
 		}
 	})
 
-	log.Println("Dashboard WebSocket Server on :8081...")
-	http.ListenAndServe(":8081", nil)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8081" // fallback for local dev
+	}
+	log.Printf("Dashboard WebSocket Server on :%s...", port)
+	http.ListenAndServe(":"+port, nil)
 }

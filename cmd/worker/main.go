@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -14,7 +15,11 @@ import (
 
 func main() {
 	ctx := context.Background()
-	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
+	redisAddr := os.Getenv("REDIS_URL")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379" // fallback for local dev
+	}
+	rdb := redis.NewClient(&redis.Options{Addr: redisAddr})
 
 	// Test Redis connection
 	if err := rdb.Ping(ctx).Err(); err != nil {

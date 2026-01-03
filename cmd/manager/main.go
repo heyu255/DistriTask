@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,8 +16,12 @@ import (
 
 func main() {
 	// 1. Setup Redis Connection
+	redisAddr := os.Getenv("REDIS_URL")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379" // fallback for local dev
+	}
 	rdb := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr: redisAddr,
 	})
 
 	// Test Redis connection on startup
@@ -60,15 +65,23 @@ func main() {
 	})
 
 	// 5. Wrap the mux with the CORS middleware and start the server
-	log.Println("Manager starting on :8080...")
-	log.Fatal(http.ListenAndServe(":8080", enableCORS(mux)))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // fallback for local dev
+	}
+	log.Printf("Manager starting on :%s...", port)
+	log.Fatal(http.ListenAndServe(":"+port, enableCORS(mux)))
 }
 
 // enableCORS middleware handles the pre-flight OPTIONS request and sets headers
 func enableCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Allow your Next.js frontend origin
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		// Allow your Next.js frontend origin (use env var in production)
+		allowedOrigin := os.Getenv("ALLOWED_ORIGIN")
+		if allowedOrigin == "" {
+			allowedOrigin = "http://localhost:3000" // fallback for local dev
+		}
+		w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 

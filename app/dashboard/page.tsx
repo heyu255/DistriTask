@@ -19,7 +19,8 @@ export default function TaskDashboard() {
 
   // WebSocket Connection
   useEffect(() => {
-    const socket = new WebSocket('ws://localhost:8081/ws');
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8081/ws';
+    const socket = new WebSocket(wsUrl);
     socket.onopen = () => setConnected(true);
     socket.onclose = () => setConnected(false);
     socket.onmessage = (event) => {
@@ -36,7 +37,8 @@ export default function TaskDashboard() {
   const handleSubmitTask = async () => {
     setIsSubmitting(true);
     try {
-      await fetch('http://localhost:8080/submit', { method: 'POST' });
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+      await fetch(`${apiUrl}/submit`, { method: 'POST' });
     } finally {
       setIsSubmitting(false);
     }
