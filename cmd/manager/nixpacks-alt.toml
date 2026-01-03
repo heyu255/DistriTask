@@ -1,0 +1,15 @@
+# Alternative version if Railway builds from cmd/manager directory
+# Rename this to nixpacks.toml if needed
+
+[phases.setup]
+nixPkgs = ["go"]
+
+[phases.install]
+cmds = ["cd ../.. && go mod download"]
+
+[phases.build]
+cmds = ["cd ../.. && go build -o manager ./cmd/manager && mv manager ."]
+
+[start]
+cmd = "./manager"
+
