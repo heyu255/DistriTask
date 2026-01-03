@@ -40,7 +40,11 @@ export default function TaskDashboard() {
     
     setIsSubmitting(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+      // Get API URL and ensure no trailing slash
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+      apiUrl = apiUrl.replace(/\/+$/, ''); // Remove trailing slashes
+      
+      // Construct URL properly (no double slashes)
       const url = `${apiUrl}/submit`;
       console.log('[FRONTEND] Submitting task to:', url);
       console.log('[FRONTEND] Method: POST');
@@ -54,12 +58,42 @@ export default function TaskDashboard() {
         },
         body: JSON.stringify({}), // Empty body but ensures POST
         cache: 'no-store',
-        redirect: 'error', // Don't follow redirects
+        redirect: 'manual', // Handle redirects manually to prevent POST->GET conversion
       });
       
       console.log('[FRONTEND] Response status:', response.status);
-      console.log('[FRONTEND] Response method:', response.status === 405 ? 'GET detected (wrong!)' : 'POST (correct)');
       
+      // Handle redirects manually
+      if (response.status === 301 || response.status === 302 || response.status === 307 || response.status === 308) {
+        const location = response.headers.get('Location');
+        if (location) {
+          console.log('[FRONTEND] Redirect detected to:', location);
+          // Make a new POST request to the redirect location
+          const redirectUrl = location.startsWith('http') ? location : `${apiUrl}${location}`;
+          const redirectResponse = await fetch(redirectUrl, {
+            method: 'POST',
+            mode: 'cors',
+            credentials: 'omit',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({}),
+            cache: 'no-store',
+          });
+          
+          if (!redirectResponse.ok) {
+            console.error('[FRONTEND] Failed after redirect:', redirectResponse.status, redirectResponse.statusText);
+            alert(`Failed to submit task: ${redirectResponse.status} ${redirectResponse.statusText}`);
+            return;
+          }
+          
+          const data = await redirectResponse.json();
+          console.log('[FRONTEND] Task submitted successfully after redirect:', data);
+          return;
+        }
+      }
+      
+      // Normal response (no redirect)
       if (!response.ok) {
         console.error('Failed to submit task:', response.status, response.statusText);
         alert(`Failed to submit task: ${response.status} ${response.statusText}`);
