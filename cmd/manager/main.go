@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,13 +17,21 @@ import (
 
 func main() {
 	// 1. Setup Redis Connection
-	redisAddr := os.Getenv("REDIS_URL")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379" // fallback for local dev
+	redisURL := os.Getenv("REDIS_URL")
+	// Remove quotes if present (Railway sometimes adds them)
+	redisURL = strings.Trim(redisURL, `"'`)
+	var rdb *redis.Client
+	if redisURL == "" {
+		// Fallback for local dev
+		rdb = redis.NewClient(&redis.Options{Addr: "localhost:6379"})
+	} else {
+		// Parse full Redis URL (handles rediss://, redis://, etc.)
+		opt, err := redis.ParseURL(redisURL)
+		if err != nil {
+			log.Fatalf("Failed to parse REDIS_URL: %v", err)
+		}
+		rdb = redis.NewClient(opt)
 	}
-	rdb := redis.NewClient(&redis.Options{
-		Addr: redisAddr,
-	})
 
 	// Test Redis connection on startup
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
